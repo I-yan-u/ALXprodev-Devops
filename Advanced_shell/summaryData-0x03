@@ -1,0 +1,37 @@
+#!/bin/bash
+
+# Create a report that summarizes data for multiple Pokémon.
+
+POKEMONS=("bulbasaur" "ivysaur" "venusaur" "charmander" "charmeleon")
+CSV_FILE="pokemon_summary.csv"
+
+for POKEMON in "${POKEMONS[@]}"; do
+    API_URL="https://pokeapi.co/api/v2/pokemon/${POKEMON}"
+
+    # Make the API request and store the response
+    response=$(curl -s -X GET $API_URL)
+
+    # Check if the curl command was successful
+    if [ $? -ne 0 ]; then
+        echo "Error occurred while making the API call for $POKEMON." 2> errors.txt
+    else
+        # Extract relevant data from the response
+        name=$(echo "$response" | jq -r '.name')
+        height=$(echo "$response" | jq -r '.height')
+        weight=$(echo "$response" | jq -r '.weight')
+
+        # Format the data
+        formatted_height=$(awk "BEGIN {printf \"%.1f\", $height / 10}")
+        formatted_weight=$(awk "BEGIN {printf \"%.1f\", $weight / 10}")
+
+        # Append the data to the CSV file
+        echo "$name,$formatted_height,$formatted_weight" >> "$CSV_FILE"
+    fi
+
+    # Delay between requests
+    sleep 2
+done
+
+# Use awk to calculate the average height and weight of all Pokémon in the report.
+awk -F, 'BEGIN {sum_height=0; sum_weight=0; count=0} {sum_height+=$2; sum_weight+=$3; count+=1} END {print "Average height: " sum_height/count "m"; print "Average weight: " sum_weight/count "kg"}' "$CSV_FILE"
+echo "Report generated successfully."
