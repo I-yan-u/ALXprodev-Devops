@@ -1,0 +1,47 @@
+#!/bin/bash
+# Automate the process of making API requests to the Pokémon API and saving the results to a file
+
+#set -x
+
+make_request() {
+    local API_URL=$1
+    local RETRY_COUNT=0
+    local SUCCESS=false
+
+    while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+        # Make the API request and store the response
+        response=$(curl -s -X GET $API_URL)
+
+        # Check if the curl command was successful
+        if [ $? -eq 0 ]; then
+            echo "$response" > "${POKEMON}.json"
+            SUCCESS=true
+            break
+        else
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            echo "Error occurred while making the API call for $POKEMON. Attempt $RETRY_COUNT of $MAX_RETRIES." >> errors.txt
+            sleep 2
+        fi
+    done
+
+    if [ "$SUCCESS" = false ]; then
+        echo "Failed to retrieve data for $POKEMON after $MAX_RETRIES attempts." >> errors.txt
+    fi
+}
+
+
+POKEMONS=("bulbasaur" "ivysaur" "venusaur" "charmander" "charmeleon")
+
+for POKEMON in "${POKEMONS[@]}"; do
+    API_URL="https://pokeapi.co/api/v2/pokemon/${POKEMON}"
+    MAX_RETRIES=3
+    RETRY_COUNT=0
+    SUCCESS=false
+
+    make_request $API_URL &
+    # Delay between requests
+    sleep 2
+done
+
+# Wait for all background processes to complete
+wait
