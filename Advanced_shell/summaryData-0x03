@@ -32,6 +32,9 @@ for POKEMON in "${POKEMONS[@]}"; do
     sleep 2
 done
 
-# Use awk to calculate the average height and weight of all Pokémon in the report.
-awk -F, 'BEGIN {sum_height=0; sum_weight=0; count=0} {sum_height+=$2; sum_weight+=$3; count+=1} END {print "Average height: " sum_height/count "m"; print "Average weight: " sum_weight/count "kg"}' "$CSV_FILE"
-echo "Report generated successfully."
+# Calculate the average height and weight
+average_height=$(awk -F, '{sum+=$2; count++} END {if (count > 0) print sum/count}' "$CSV_FILE")
+average_weight=$(awk -F, '{sum+=$3; count++} END {if (count > 0) print sum/count}' "$CSV_FILE")
+
+# Append the average values to the CSV file using sed
+sed -i "\$aAverage,$average_height,$average_weight" "$CSV_FILE"
