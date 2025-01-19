@@ -1,16 +1,15 @@
 #!/bin/bash
 # Automate the process of making API requests to the Pokémon API and saving the results to a file
 
-#set -x
-
 make_request() {
     local API_URL=$1
+    local POKEMON=$2
     local RETRY_COUNT=0
     local SUCCESS=false
 
     while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
         # Make the API request and store the response
-        response=$(curl -s -X GET $API_URL)
+        response=$(curl -s -X GET "$API_URL")
 
         # Check if the curl command was successful
         if [ $? -eq 0 ]; then
@@ -29,19 +28,42 @@ make_request() {
     fi
 }
 
+# Signal handler to clean up background processes on script termination
+cleanup() {
+    echo "Terminating all background processes..."
+    kill $(jobs -p) 2>/dev/null
+    wait
+    exit 1
+}
 
+# Set trap to handle script interruptions
+trap cleanup SIGINT SIGTERM
+
+# List of Pokémon to fetch
 POKEMONS=("bulbasaur" "ivysaur" "venusaur" "charmander" "charmeleon")
+MAX_RETRIES=3
+
+# Limit concurrency to a maximum of 3 processes
+MAX_CONCURRENT=3
+current_jobs=0
 
 for POKEMON in "${POKEMONS[@]}"; do
     API_URL="https://pokeapi.co/api/v2/pokemon/${POKEMON}"
-    MAX_RETRIES=3
-    RETRY_COUNT=0
-    SUCCESS=false
 
-    make_request $API_URL &
-    # Delay between requests
-    sleep 2
+    # Start the request in the background
+    make_request "$API_URL" "$POKEMON" &
+
+    # Increment the number of current jobs
+    current_jobs=$((current_jobs + 1))
+
+    # If the number of running jobs reaches the limit, wait for any to finish
+    if [ "$current_jobs" -ge "$MAX_CONCURRENT" ]; then
+        wait -n  # Wait for any background job to finish
+        current_jobs=$((current_jobs - 1))
+    fi
 done
 
-# Wait for all background processes to complete
+# Wait for all remaining jobs to finish
 wait
+
+echo "All API requests completed."
