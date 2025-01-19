@@ -10,7 +10,7 @@ response=$(curl -s -X GET $API_URL)
 
 # Check if the curl command was successful
 if [ $? -ne 0 ]; then
-    echo "Error occurred while making the API call." 2> error.txt
+    echo "Error occurred while making the API call." 2> errors.txt
 else
     echo "$response" > data.json
 fi
